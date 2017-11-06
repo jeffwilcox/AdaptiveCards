@@ -52,7 +52,7 @@ namespace AdaptiveCards { namespace Uwp
     }
 
     _Use_decl_annotations_
-    IFACEMETHODIMP AdaptiveContainer::put_SelectAction(IAdaptiveActionElement* action)
+    IFACEMETHODIMP AdaptiveContainer::put_SelectAction(IAdaptiveActionElement* /*action*/)
     {
         return E_NOTIMPL;
     }

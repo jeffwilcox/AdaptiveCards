@@ -99,7 +99,7 @@ namespace AdaptiveCards { namespace Uwp
         }
 
         static std::wstring GetSizeFromImage(
-            ABI::AdaptiveCards::Uwp::IAdaptiveHostConfig* hostConfig, 
+            ABI::AdaptiveCards::Uwp::IAdaptiveHostConfig* hostConfig,
             _In_ ABI::AdaptiveCards::Uwp::IAdaptiveImage* adaptiveImage)
         {
             ABI::AdaptiveCards::Uwp::ImageSize size;

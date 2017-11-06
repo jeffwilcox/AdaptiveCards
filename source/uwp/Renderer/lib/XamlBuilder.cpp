@@ -54,8 +54,8 @@ namespace AdaptiveCards { namespace Uwp
 
     _Use_decl_annotations_
     ComPtr<IUIElement> XamlBuilder::CreateSeparator(
-        UINT spacing, 
-        UINT separatorThickness, 
+        UINT spacing,
+        UINT separatorThickness,
         ABI::Windows::UI::Color separatorColor,
         bool isHorizontal)
     {
@@ -103,7 +103,7 @@ namespace AdaptiveCards { namespace Uwp
     _Use_decl_annotations_
     void XamlBuilder::BuildXamlTreeFromAdaptiveCard(
         IAdaptiveCard* adaptiveCard,
-        IUIElement** xamlTreeRoot, 
+        IUIElement** xamlTreeRoot,
         AdaptiveCardRenderer* renderer,
         AdaptiveRenderContext* renderContext,
         boolean isOuterCard,
@@ -1013,7 +1013,7 @@ namespace AdaptiveCards { namespace Uwp
         ABI::AdaptiveCards::Uwp::ForegroundColor color,
         ABI::AdaptiveCards::Uwp::ContainerStyle containerStyle,
         bool isSubtle,
-        bool wrap, 
+        bool wrap,
         UINT32 maxWidth,
         ABI::AdaptiveCards::Uwp::TextWeight weight,
         ABI::Windows::UI::Xaml::Controls::ITextBlock* xamlTextBlock,
@@ -1105,7 +1105,7 @@ namespace AdaptiveCards { namespace Uwp
 
     _Use_decl_annotations_
     void XamlBuilder::BuildTextBlock(
-        IAdaptiveCardElement* adaptiveCardElement, 
+        IAdaptiveCardElement* adaptiveCardElement,
         IAdaptiveRenderContext* renderContext,
         IAdaptiveRenderArgs* renderArgs,
         IUIElement** textBlockControl)
@@ -2059,7 +2059,7 @@ namespace AdaptiveCards { namespace Uwp
     void XamlBuilder::BuildTextInput(
         IAdaptiveCardElement* adaptiveCardElement,
         IAdaptiveRenderContext* renderContext,
-        IAdaptiveRenderArgs* renderArgs,
+        IAdaptiveRenderArgs* /*renderArgs*/,
         IUIElement** textInputControl)
     {
         ComPtr<IAdaptiveHostConfig> hostConfig;
@@ -2127,7 +2127,7 @@ namespace AdaptiveCards { namespace Uwp
     void XamlBuilder::BuildTimeInput(
         IAdaptiveCardElement* adaptiveCardElement,
         IAdaptiveRenderContext* renderContext,
-        IAdaptiveRenderArgs* renderArgs,
+        IAdaptiveRenderArgs* /*renderArgs*/,
         IUIElement** timeInputControl)
     {
         ComPtr<IAdaptiveHostConfig> hostConfig;
@@ -2153,7 +2153,7 @@ namespace AdaptiveCards { namespace Uwp
     void XamlBuilder::BuildToggleInput(
         IAdaptiveCardElement* adaptiveCardElement,
         IAdaptiveRenderContext* renderContext,
-        IAdaptiveRenderArgs* renderArgs,
+        IAdaptiveRenderArgs* /*renderArgs*/,
         IUIElement** toggleInputControl)
     {
         ComPtr<IAdaptiveHostConfig> hostConfig;
