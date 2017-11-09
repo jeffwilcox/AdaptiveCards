@@ -13,7 +13,6 @@
 #include "AdaptiveCardGetResourceStreamArgs.h"
 #include "AdaptiveCardResourceResolvers.h"
 #include "XamlHelpers.h"
-#include "XamlStyleKeyGenerators.h"
 #include "AdaptiveRenderArgs.h"
 #include "json/json.h"
 #include "WholeItemsPanel.h"
@@ -214,6 +213,14 @@ namespace AdaptiveCards { namespace Uwp
         return S_OK;
     }
 
+    HRESULT SetStyle(
+        IAdaptiveRenderContext* renderContext,
+        std::wstring resourceName, 
+        IFrameworkElement* frameWorkElement)
+    {
+        return S_OK;
+    }
+
     _Use_decl_annotations_
     template<typename T>
     HRESULT XamlBuilder::TryGetResourceFromResourceDictionaries(IResourceDictionary* resourceDictionary, std::wstring resourceName, T** style)
@@ -253,45 +260,23 @@ namespace AdaptiveCards { namespace Uwp
         return E_FAIL;
     }
 
-    template<typename T>
-    bool XamlBuilder::TryGetValueResourceFromResourceDictionaries(
-        _In_ IResourceDictionary* resourceDictionary,
-        _In_ std::wstring styleName,
-        _Out_ T* valueResource)
+    HRESULT XamlBuilder::SetStyleFromResourceDictionary(
+        IAdaptiveRenderContext* renderContext,
+        std::wstring resourceName,
+        IFrameworkElement* frameworkElement)
     {
-        if (resourceDictionary == nullptr)
+        ComPtr<IResourceDictionary> resourceDictionary;
+        RETURN_IF_FAILED(renderContext->get_OverrideStyles(&resourceDictionary));
+
+        ComPtr<IStyle> style;
+        if (SUCCEEDED(TryGetResourceFromResourceDictionaries<IStyle>(resourceDictionary.Get(), resourceName, &style)))
         {
-            return E_INVALIDARG;
+            RETURN_IF_FAILED(frameworkElement->put_Style(style.Get()));
         }
 
-        try
-        {
-            // Get a resource key for the requested style that we can use for ResourceDictionary Lookups
-            ComPtr<IPropertyValueStatics> propertyValueStatics;
-            THROW_IF_FAILED(GetActivationFactory(HStringReference(RuntimeClass_Windows_Foundation_PropertyValue).Get(), &propertyValueStatics));
-            ComPtr<IInspectable> resourceKey;
-            THROW_IF_FAILED(propertyValueStatics->CreateString(HStringReference(styleName.c_str()).Get(), resourceKey.GetAddressOf()));
-
-            // Search for the named resource
-            ComPtr<IResourceDictionary> strongDictionary = resourceDictionary;
-            ComPtr<IInspectable> dictionaryValue;
-            ComPtr<IMap<IInspectable*, IInspectable*>> resourceDictionaryMap;
-            if (SUCCEEDED(strongDictionary.As(&resourceDictionaryMap)) &&
-                SUCCEEDED(resourceDictionaryMap->Lookup(resourceKey.Get(), dictionaryValue.GetAddressOf())))
-            {
-                ComPtr<T> resourceToReturn;
-                if (SUCCEEDED(dictionaryValue.As(&styleToReturn)))
-                {
-                    THROW_IF_FAILED(styleToReturn.CopyTo(style));
-                    return true;
-                }
-            }
-        }
-        catch (...)
-        {
-        }
-        return false;
+        return S_OK;
     }
+
     _Use_decl_annotations_
     ComPtr<IUIElement> XamlBuilder::CreateRootCardElement(
         IAdaptiveCard* adaptiveCard,
@@ -1193,6 +1178,10 @@ namespace AdaptiveCards { namespace Uwp
         THROW_IF_FAILED(renderArgs->get_ContainerStyle(&containerStyle));
         StyleXamlTextBlock(textblockSize, textColor, containerStyle, isSubtle, shouldWrap, MAXUINT32, textWeight, xamlTextBlock.Get(), hostConfig.Get());
 
+        ComPtr<IFrameworkElement> frameworkElement;
+        THROW_IF_FAILED(xamlTextBlock.As(&frameworkElement));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"TextBlock", frameworkElement.Get()));
+
         THROW_IF_FAILED(xamlTextBlock.CopyTo(textBlockControl));
     }
 
@@ -1396,16 +1385,7 @@ namespace AdaptiveCards { namespace Uwp
                 break;
         }
 
-        // Generate the style name from the adaptive element and apply it to the xaml
-        // element if it exists in the resource dictionaries
-        ComPtr<IResourceDictionary> resourceDictionary;
-        THROW_IF_FAILED(renderContext->get_OverrideStyles(&resourceDictionary));
-        ComPtr<IStyle> style;
-        std::wstring styleName = XamlStyleKeyGenerators::GenerateKeyForImage(hostConfig.Get(), adaptiveImage.Get());
-        if (SUCCEEDED(TryGetResourceFromResourceDictionaries<IStyle>(resourceDictionary.Get(), styleName, &style)))
-        {
-            THROW_IF_FAILED(frameworkElement->put_Style(style.Get()));
-        }
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Image", frameworkElement.Get()));
 
         THROW_IF_FAILED(frameworkElement.CopyTo(imageControl));
     }
@@ -1839,6 +1819,7 @@ namespace AdaptiveCards { namespace Uwp
     }
 
     void XamlBuilder::BuildCompactChoiceSetInput(
+        IAdaptiveRenderContext* renderContext,
         IAdaptiveChoiceSetInput* adaptiveChoiceSetInput,
         IUIElement** choiceInputSet)
     {
@@ -1894,10 +1875,13 @@ namespace AdaptiveCards { namespace Uwp
         THROW_IF_FAILED(comboBox.As(&comboBoxAsUIElement));
         THROW_IF_FAILED(AddHandledTappedEvent(comboBoxAsUIElement.Get()));
 
+        SetStyleFromResourceDictionary(renderContext, L"Input.ChoiceSet.Compact", comboBoxAsFrameworkElement.Get());
+
         THROW_IF_FAILED(comboBoxAsUIElement.CopyTo(choiceInputSet));
     }
 
     void XamlBuilder::BuildExpandedChoiceSetInput(
+        IAdaptiveRenderContext* renderContext,
         IAdaptiveChoiceSetInput* adaptiveChoiceSetInput,
         boolean isMultiSelect,
         IUIElement** choiceInputSet)
@@ -1911,18 +1895,26 @@ namespace AdaptiveCards { namespace Uwp
         ComPtr<IPanel> panel;
         THROW_IF_FAILED(stackPanel.As(&panel));
 
-        XamlHelpers::IterateOverVector<IAdaptiveChoiceInput>(choices.Get(), [panel, isMultiSelect](IAdaptiveChoiceInput* adaptiveChoiceInput)
+        XamlHelpers::IterateOverVector<IAdaptiveChoiceInput>(choices.Get(), [panel, isMultiSelect, renderContext](IAdaptiveChoiceInput* adaptiveChoiceInput)
         {
             ComPtr<IUIElement> choiceItem;
             if (isMultiSelect)
             {
                 ComPtr<ICheckBox> checkBox = XamlHelpers::CreateXamlClass<ICheckBox>(HStringReference(RuntimeClass_Windows_UI_Xaml_Controls_CheckBox));
                 THROW_IF_FAILED(checkBox.As(&choiceItem));
+
+                ComPtr<IFrameworkElement> frameworkElement;
+                THROW_IF_FAILED(checkBox.As(&frameworkElement));
+                SetStyleFromResourceDictionary(renderContext, L"Input.ChoiceSet.Multiselect", frameworkElement.Get());
             }
             else
             {
                 ComPtr<IRadioButton> radioButton = XamlHelpers::CreateXamlClass<IRadioButton>(HStringReference(RuntimeClass_Windows_UI_Xaml_Controls_RadioButton));
                 THROW_IF_FAILED(radioButton.As(&choiceItem));
+
+                ComPtr<IFrameworkElement> frameworkElement;
+                THROW_IF_FAILED(radioButton.As(&frameworkElement));
+                SetStyleFromResourceDictionary(renderContext, L"Input.ChoiceSet.SingleSelect", frameworkElement.Get());
             }
 
             HString title;
@@ -1934,7 +1926,7 @@ namespace AdaptiveCards { namespace Uwp
             XamlHelpers::SetToggleValue(choiceItem.Get(), isSelected);
 
             THROW_IF_FAILED(AddHandledTappedEvent(choiceItem.Get()));
-
+            
             XamlHelpers::AppendXamlElementToPanel(choiceItem.Get(), panel.Get());
         });
 
@@ -1967,11 +1959,11 @@ namespace AdaptiveCards { namespace Uwp
         if (choiceSetStyle == ABI::AdaptiveCards::Uwp::ChoiceSetStyle_Compact &&
             !isMultiSelect)
         {
-            BuildCompactChoiceSetInput(adaptiveChoiceSetInput.Get(), choiceInputSet);
+            BuildCompactChoiceSetInput(renderContext, adaptiveChoiceSetInput.Get(), choiceInputSet);
         }
         else
         {
-            BuildExpandedChoiceSetInput(adaptiveChoiceSetInput.Get(), isMultiSelect, choiceInputSet);
+            BuildExpandedChoiceSetInput(renderContext, adaptiveChoiceSetInput.Get(), isMultiSelect, choiceInputSet);
         }
 
         renderContext->AddInputItem(adaptiveCardElement, *choiceInputSet);
@@ -2006,7 +1998,11 @@ namespace AdaptiveCards { namespace Uwp
         THROW_IF_FAILED(datePickerAsFrameworkElement->put_HorizontalAlignment(HorizontalAlignment_Stretch));
 
         THROW_IF_FAILED(datePicker.CopyTo(dateInputControl));
+        
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Input.Date", datePickerAsFrameworkElement.Get()));
+        
         THROW_IF_FAILED(renderContext->AddInputItem(adaptiveCardElement, *dateInputControl));
+
         // TODO: Handle parsing dates for min/max and value
     }
 
@@ -2052,9 +2048,15 @@ namespace AdaptiveCards { namespace Uwp
         THROW_IF_FAILED(adaptiveNumberInput->get_Placeholder(placeHolderText.GetAddressOf()));
         THROW_IF_FAILED(textBox2->put_PlaceholderText(placeHolderText.Get()));
 
+        ComPtr<IFrameworkElement> frameworkElement;
+        THROW_IF_FAILED(textBox.As(&frameworkElement));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Input.Number", frameworkElement.Get()));
+
         // TODO: Handle max and min?
         THROW_IF_FAILED(textBox.CopyTo(numberInputControl));
         THROW_IF_FAILED(renderContext->AddInputItem(adaptiveCardElement, *numberInputControl));
+
+
     }
 
     void XamlBuilder::BuildTextInput(
@@ -2121,6 +2123,10 @@ namespace AdaptiveCards { namespace Uwp
 
         THROW_IF_FAILED(textBox->put_InputScope(inputScope.Get()));
 
+        ComPtr<IFrameworkElement> frameworkElement;
+        THROW_IF_FAILED(textBox.As(&frameworkElement));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Input.Text", frameworkElement.Get()));
+
         THROW_IF_FAILED(textBox.CopyTo(textInputControl));
         THROW_IF_FAILED(renderContext->AddInputItem(adaptiveCardElement, *textInputControl));
     }
@@ -2144,6 +2150,8 @@ namespace AdaptiveCards { namespace Uwp
         ComPtr<IFrameworkElement> timePickerAsFrameworkElement;
         THROW_IF_FAILED(timePicker.As(&timePickerAsFrameworkElement));
         THROW_IF_FAILED(timePickerAsFrameworkElement->put_HorizontalAlignment(HorizontalAlignment_Stretch));
+
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Input.Time", timePickerAsFrameworkElement.Get()));
 
         // TODO: Handle placeholder text and parsing times for min/max and value
 
@@ -2188,8 +2196,12 @@ namespace AdaptiveCards { namespace Uwp
 
         ComPtr<IUIElement> checkboxAsUIElement;
         THROW_IF_FAILED(checkBox.As(&checkboxAsUIElement));
-
         THROW_IF_FAILED(AddHandledTappedEvent(checkboxAsUIElement.Get()));
+
+        ComPtr<IFrameworkElement> frameworkElement;
+        THROW_IF_FAILED(checkBox.As(&frameworkElement));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Input.Toggle", frameworkElement.Get()));
+
         THROW_IF_FAILED(renderContext->AddInputItem(adaptiveCardElement, checkboxAsUIElement.Get()));
         THROW_IF_FAILED(checkboxAsUIElement.CopyTo(toggleInputControl));
     }
@@ -2266,13 +2278,7 @@ namespace AdaptiveCards { namespace Uwp
         THROW_IF_FAILED(buttonAsFrameworkElement->put_Margin({ negativeCardMargin, negativeTopBottomMargin, negativeCardMargin, negativeTopBottomMargin }));
 
         // Style the hit target button
-        ComPtr<IResourceDictionary> resourceDictionary;
-        THROW_IF_FAILED(renderContext->get_OverrideStyles(&resourceDictionary));
-        ComPtr<IStyle> style;
-        if (SUCCEEDED(TryGetResourceFromResourceDictionaries<IStyle>(resourceDictionary.Get(), L"SelectAction", &style)))
-        {
-            THROW_IF_FAILED(buttonAsFrameworkElement->put_Style(style.Get()));
-        }
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"SelectAction", buttonAsFrameworkElement.Get()));
 
         WireButtonClickToAction(button.Get(), action, renderContext);
 

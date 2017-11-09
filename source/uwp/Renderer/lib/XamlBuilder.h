@@ -110,11 +110,11 @@ namespace AdaptiveCards { namespace Uwp
             _In_ ABI::Windows::UI::Xaml::IResourceDictionary* resourceDictionary,
             _In_ std::wstring resourceName,
             _COM_Outptr_result_maybenull_ T** resource);
-        template<typename T>
-        static bool TryGetValueResourceFromResourceDictionaries(
-            _In_ ABI::Windows::UI::Xaml::IResourceDictionary* resourceDictionary,
-            _In_ std::wstring styleName,
-            _Out_ T* valueResource);
+
+        static HRESULT SetStyleFromResourceDictionary(
+            ABI::AdaptiveCards::Uwp::IAdaptiveRenderContext* renderContext,
+            std::wstring resourceName,
+            ABI::Windows::UI::Xaml::IFrameworkElement* frameworkElement);
 
     private:
         ImageLoadTracker m_imageLoadTracker;
@@ -198,9 +198,11 @@ namespace AdaptiveCards { namespace Uwp
             _Out_ ABI::Windows::UI::Color* separatorColor,
             _Out_ bool* needsSeparator);
         static void BuildCompactChoiceSetInput(
+            ABI::AdaptiveCards::Uwp::IAdaptiveRenderContext* renderContext,
             _In_ ABI::AdaptiveCards::Uwp::IAdaptiveChoiceSetInput* adaptiveChoiceSetInput,
             _COM_Outptr_ ABI::Windows::UI::Xaml::IUIElement** choiceInputSetControl);
         static void BuildExpandedChoiceSetInput(
+            ABI::AdaptiveCards::Uwp::IAdaptiveRenderContext* renderContext,
             _In_ ABI::AdaptiveCards::Uwp::IAdaptiveChoiceSetInput* adaptiveChoiceInputSet,
             boolean isMultiSelect,
             _COM_Outptr_ ABI::Windows::UI::Xaml::IUIElement** choiceSetInputControl);
