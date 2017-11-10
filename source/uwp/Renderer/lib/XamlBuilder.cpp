@@ -213,14 +213,6 @@ namespace AdaptiveCards { namespace Uwp
         return S_OK;
     }
 
-    HRESULT SetStyle(
-        IAdaptiveRenderContext* renderContext,
-        std::wstring resourceName, 
-        IFrameworkElement* frameWorkElement)
-    {
-        return S_OK;
-    }
-
     _Use_decl_annotations_
     template<typename T>
     HRESULT XamlBuilder::TryGetResourceFromResourceDictionaries(IResourceDictionary* resourceDictionary, std::wstring resourceName, T** style)
@@ -2055,8 +2047,6 @@ namespace AdaptiveCards { namespace Uwp
         // TODO: Handle max and min?
         THROW_IF_FAILED(textBox.CopyTo(numberInputControl));
         THROW_IF_FAILED(renderContext->AddInputItem(adaptiveCardElement, *numberInputControl));
-
-
     }
 
     void XamlBuilder::BuildTextInput(
