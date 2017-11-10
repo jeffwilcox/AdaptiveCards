@@ -5,6 +5,9 @@ const PCWSTR c_defaultResourceDictionary = L"\
     xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" \
     xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"> \
 \
+    <Style x:Key=\"TextBlock\" TargetType=\"TextBlock\"> \
+        <Setter Property=\"HorizontalAlignment\" Value=\"Center\" /> \
+    </Style> \
     <Style x:Key=\"SelectAction\" TargetType=\"Button\"> \
         <Setter Property=\"Background\" Value=\"{ThemeResource ListViewItemBackground}\" /> \
         <Setter Property=\"BorderThickness\" Value=\"0\" /> \

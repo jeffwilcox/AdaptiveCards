@@ -164,6 +164,7 @@ namespace AdaptiveCards { namespace Uwp
             _Inout_ AdaptiveCards::Uwp::AdaptiveRenderContext* renderContext);
 
         static Microsoft::WRL::ComPtr<ABI::Windows::UI::Xaml::IUIElement> CreateSeparator(
+            _Inout_  ABI::AdaptiveCards::Uwp::IAdaptiveRenderContext* renderContext,
             UINT spacing, UINT separatorThickness, ABI::Windows::UI::Color separatorColor, bool isHorizontal = true);
         static void ApplyMarginToXamlElement(
             _In_ ABI::AdaptiveCards::Uwp::IAdaptiveHostConfig* hostConfig,

@@ -53,6 +53,7 @@ namespace AdaptiveCards { namespace Uwp
 
     _Use_decl_annotations_
     ComPtr<IUIElement> XamlBuilder::CreateSeparator(
+        _Inout_ IAdaptiveRenderContext* renderContext,
         UINT spacing, 
         UINT separatorThickness, 
         ABI::Windows::UI::Color separatorColor,
@@ -82,6 +83,9 @@ namespace AdaptiveCards { namespace Uwp
         }
 
         THROW_IF_FAILED(separatorAsFrameworkElement->put_Margin(margin));
+
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Separator", separatorAsFrameworkElement.Get()));
+
         ComPtr<IUIElement> result;
         THROW_IF_FAILED(separator.As(&result));
         return result;
@@ -151,6 +155,8 @@ namespace AdaptiveCards { namespace Uwp
             THROW_IF_FAILED(body->get_Size(&bodyCount));
             BuildActions(actions.Get(), renderer, childElementContainer.Get(), bodyCount > 0, renderContext);
         }
+
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Card", childElementContainerAsFE.Get()));
 
         THROW_IF_FAILED(rootElement.CopyTo(xamlTreeRoot));
 
@@ -619,7 +625,7 @@ namespace AdaptiveCards { namespace Uwp
                     GetSeparationConfigForElement(element, hostConfig.Get(), &spacing, &separatorThickness, &separatorColor, &needsSeparator);
                     if (needsSeparator)
                     {
-                        auto separator = CreateSeparator(spacing, separatorThickness, separatorColor);
+                        auto separator = CreateSeparator(renderContext, spacing, separatorThickness, separatorColor);
                         XamlHelpers::AppendXamlElementToPanel(separator.Get(), parentPanel);
                     }
                 }
@@ -708,7 +714,7 @@ namespace AdaptiveCards { namespace Uwp
             THROW_IF_FAILED(GetSpacingSizeFromSpacing(hostConfig.Get(), spacing, &spacingSize));
 
             ABI::Windows::UI::Color color = { 0 };
-            auto separator = CreateSeparator(spacingSize, 0, color);
+            auto separator = CreateSeparator(renderContext, spacingSize, 0, color);
             XamlHelpers::AppendXamlElementToPanel(separator.Get(), parentPanel);
         }
 
@@ -900,6 +906,8 @@ namespace AdaptiveCards { namespace Uwp
 
                     return S_OK;
                 }).Get(), &clickToken));
+
+                THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Action", buttonFrameworkElement.Get()));
 
                 XamlHelpers::AppendXamlElementToPanel(button.Get(), actionsPanel.Get());
 
@@ -1172,7 +1180,7 @@ namespace AdaptiveCards { namespace Uwp
 
         ComPtr<IFrameworkElement> frameworkElement;
         THROW_IF_FAILED(xamlTextBlock.As(&frameworkElement));
-        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"TextBlock", frameworkElement.Get()));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.TextBlock", frameworkElement.Get()));
 
         THROW_IF_FAILED(xamlTextBlock.CopyTo(textBlockControl));
     }
@@ -1377,7 +1385,7 @@ namespace AdaptiveCards { namespace Uwp
                 break;
         }
 
-        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Image", frameworkElement.Get()));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Image", frameworkElement.Get()));
 
         THROW_IF_FAILED(frameworkElement.CopyTo(imageControl));
     }
@@ -1456,6 +1464,8 @@ namespace AdaptiveCards { namespace Uwp
         THROW_IF_FAILED(containerPanel.As(&containerPanelAsUIElement));
         THROW_IF_FAILED(containerBorder->put_Child(containerPanelAsUIElement.Get()));
 
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Container", containerPanelAsFrameWorkElement.Get()));
+
         ComPtr<IAdaptiveActionElement> selectAction;
         THROW_IF_FAILED(adaptiveContainer->get_SelectAction(&selectAction));
         if (selectAction != nullptr && SupportsInteractivity(hostConfig.Get()))
@@ -1525,6 +1535,8 @@ namespace AdaptiveCards { namespace Uwp
         THROW_IF_FAILED(columnPanel.As(&columnPanelAsFrameworkElement));
         THROW_IF_FAILED(columnPanelAsFrameworkElement->put_VerticalAlignment(VerticalAlignment_Stretch));
 
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Column", columnPanelAsFrameworkElement.Get()));
+
         THROW_IF_FAILED(columnPanel.CopyTo(ColumnControl));
     }
 
@@ -1580,7 +1592,7 @@ namespace AdaptiveCards { namespace Uwp
                     THROW_IF_FAILED(separatorColumnDefinition->put_Width({ 1.0, GridUnitType::GridUnitType_Auto }));
                     THROW_IF_FAILED(columnDefinitions->Append(separatorColumnDefinition.Get()));
 
-                    auto separator = CreateSeparator(spacing, separatorThickness, separatorColor, false);
+                    auto separator = CreateSeparator(renderContext, spacing, separatorThickness, separatorColor, false);
                     ComPtr<IFrameworkElement> separatorAsFrameworkElement;
                     THROW_IF_FAILED(separator.As(&separatorAsFrameworkElement));
                     gridStatics->SetColumn(separatorAsFrameworkElement.Get(), currentColumn++);
@@ -1642,6 +1654,10 @@ namespace AdaptiveCards { namespace Uwp
             // Finally add the column container to the grid
             XamlHelpers::AppendXamlElementToPanel(xamlColumn.Get(), gridAsPanel.Get());
         });
+
+        ComPtr<IFrameworkElement> columnSetAsFrameworkElement;
+        THROW_IF_FAILED(xamlGrid.As(&columnSetAsFrameworkElement));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.ColumnSet", columnSetAsFrameworkElement.Get()));
 
         ComPtr<IAdaptiveActionElement> selectAction;
         THROW_IF_FAILED(adaptiveColumnSet->get_SelectAction(&selectAction));
@@ -1726,15 +1742,20 @@ namespace AdaptiveCards { namespace Uwp
             // Mark the column container with the current column
             ComPtr<IFrameworkElement> titleTextBlockAsFrameWorkElement;
             THROW_IF_FAILED(titleTextBlock.As(&titleTextBlockAsFrameWorkElement));
+            ComPtr<IFrameworkElement> valueTextBlockAsFrameWorkElement;
+            THROW_IF_FAILED(valueTextBlock.As(&valueTextBlockAsFrameWorkElement));
+
             UINT32 spacing;
             THROW_IF_FAILED(factSetConfig->get_Spacing(&spacing));
             //Add spacing from hostconfig to right margin of title.
             titleTextBlockAsFrameWorkElement->put_Margin({ 0, 0, (double)spacing, 0 });
+
+            THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Fact.Title", titleTextBlockAsFrameWorkElement.Get()));
+            THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Fact.Value", valueTextBlockAsFrameWorkElement.Get()));
+
             THROW_IF_FAILED(gridStatics->SetColumn(titleTextBlockAsFrameWorkElement.Get(), 0));
             THROW_IF_FAILED(gridStatics->SetRow(titleTextBlockAsFrameWorkElement.Get(), currentFact));
 
-            ComPtr<IFrameworkElement> valueTextBlockAsFrameWorkElement;
-            THROW_IF_FAILED(valueTextBlock.As(&valueTextBlockAsFrameWorkElement));
             THROW_IF_FAILED(gridStatics->SetColumn(valueTextBlockAsFrameWorkElement.Get(), 1));
             THROW_IF_FAILED(gridStatics->SetRow(valueTextBlockAsFrameWorkElement.Get(), currentFact));
 
@@ -1750,6 +1771,10 @@ namespace AdaptiveCards { namespace Uwp
             XamlHelpers::AppendXamlElementToPanel(valueUIElement.Get(), gridAsPanel.Get());
             ++currentFact;
         });
+
+        ComPtr<IFrameworkElement> factSetAsFrameworkElement;
+        THROW_IF_FAILED(xamlGrid.As(&factSetAsFrameworkElement));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.FactSet", factSetAsFrameworkElement.Get()));
 
         THROW_IF_FAILED(xamlGrid.CopyTo(factSetControl));
     }
@@ -1806,6 +1831,10 @@ namespace AdaptiveCards { namespace Uwp
                 XamlHelpers::AppendXamlElementToPanel(uiImage.Get(), gridAsPanel.Get());
             });
         }
+
+        ComPtr<IFrameworkElement> imageSetAsFrameworkElement;
+        THROW_IF_FAILED(xamlGrid.As(&imageSetAsFrameworkElement));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.ImageSet", imageSetAsFrameworkElement.Get()));
 
         THROW_IF_FAILED(xamlGrid.CopyTo(imageSetControl));
     }
@@ -1867,7 +1896,7 @@ namespace AdaptiveCards { namespace Uwp
         THROW_IF_FAILED(comboBox.As(&comboBoxAsUIElement));
         THROW_IF_FAILED(AddHandledTappedEvent(comboBoxAsUIElement.Get()));
 
-        SetStyleFromResourceDictionary(renderContext, L"Input.ChoiceSet.Compact", comboBoxAsFrameworkElement.Get());
+        SetStyleFromResourceDictionary(renderContext, L"Adaptive.Input.ChoiceSet.Compact", comboBoxAsFrameworkElement.Get());
 
         THROW_IF_FAILED(comboBoxAsUIElement.CopyTo(choiceInputSet));
     }
@@ -1897,7 +1926,7 @@ namespace AdaptiveCards { namespace Uwp
 
                 ComPtr<IFrameworkElement> frameworkElement;
                 THROW_IF_FAILED(checkBox.As(&frameworkElement));
-                SetStyleFromResourceDictionary(renderContext, L"Input.ChoiceSet.Multiselect", frameworkElement.Get());
+                SetStyleFromResourceDictionary(renderContext, L"Adaptive.Input.Choice.Multiselect", frameworkElement.Get());
             }
             else
             {
@@ -1906,7 +1935,7 @@ namespace AdaptiveCards { namespace Uwp
 
                 ComPtr<IFrameworkElement> frameworkElement;
                 THROW_IF_FAILED(radioButton.As(&frameworkElement));
-                SetStyleFromResourceDictionary(renderContext, L"Input.ChoiceSet.SingleSelect", frameworkElement.Get());
+                SetStyleFromResourceDictionary(renderContext, L"Adaptive.Input.Choice.SingleSelect", frameworkElement.Get());
             }
 
             HString title;
@@ -1921,6 +1950,10 @@ namespace AdaptiveCards { namespace Uwp
             
             XamlHelpers::AppendXamlElementToPanel(choiceItem.Get(), panel.Get());
         });
+
+        ComPtr<IFrameworkElement> choiceSetAsFrameworkElement;
+        THROW_IF_FAILED(stackPanel.As(&choiceSetAsFrameworkElement));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Input.ChoiceSet.Expanded", choiceSetAsFrameworkElement.Get()));
 
         THROW_IF_FAILED(stackPanel.CopyTo(choiceInputSet));
     }
@@ -1991,7 +2024,7 @@ namespace AdaptiveCards { namespace Uwp
 
         THROW_IF_FAILED(datePicker.CopyTo(dateInputControl));
         
-        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Input.Date", datePickerAsFrameworkElement.Get()));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Input.Date", datePickerAsFrameworkElement.Get()));
         
         THROW_IF_FAILED(renderContext->AddInputItem(adaptiveCardElement, *dateInputControl));
 
@@ -2042,7 +2075,7 @@ namespace AdaptiveCards { namespace Uwp
 
         ComPtr<IFrameworkElement> frameworkElement;
         THROW_IF_FAILED(textBox.As(&frameworkElement));
-        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Input.Number", frameworkElement.Get()));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Input.Number", frameworkElement.Get()));
 
         // TODO: Handle max and min?
         THROW_IF_FAILED(textBox.CopyTo(numberInputControl));
@@ -2115,7 +2148,7 @@ namespace AdaptiveCards { namespace Uwp
 
         ComPtr<IFrameworkElement> frameworkElement;
         THROW_IF_FAILED(textBox.As(&frameworkElement));
-        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Input.Text", frameworkElement.Get()));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Input.Text", frameworkElement.Get()));
 
         THROW_IF_FAILED(textBox.CopyTo(textInputControl));
         THROW_IF_FAILED(renderContext->AddInputItem(adaptiveCardElement, *textInputControl));
@@ -2141,7 +2174,7 @@ namespace AdaptiveCards { namespace Uwp
         THROW_IF_FAILED(timePicker.As(&timePickerAsFrameworkElement));
         THROW_IF_FAILED(timePickerAsFrameworkElement->put_HorizontalAlignment(HorizontalAlignment_Stretch));
 
-        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Input.Time", timePickerAsFrameworkElement.Get()));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Input.Time", timePickerAsFrameworkElement.Get()));
 
         // TODO: Handle placeholder text and parsing times for min/max and value
 
@@ -2190,7 +2223,7 @@ namespace AdaptiveCards { namespace Uwp
 
         ComPtr<IFrameworkElement> frameworkElement;
         THROW_IF_FAILED(checkBox.As(&frameworkElement));
-        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Input.Toggle", frameworkElement.Get()));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.Input.Toggle", frameworkElement.Get()));
 
         THROW_IF_FAILED(renderContext->AddInputItem(adaptiveCardElement, checkboxAsUIElement.Get()));
         THROW_IF_FAILED(checkboxAsUIElement.CopyTo(toggleInputControl));
@@ -2268,7 +2301,7 @@ namespace AdaptiveCards { namespace Uwp
         THROW_IF_FAILED(buttonAsFrameworkElement->put_Margin({ negativeCardMargin, negativeTopBottomMargin, negativeCardMargin, negativeTopBottomMargin }));
 
         // Style the hit target button
-        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"SelectAction", buttonAsFrameworkElement.Get()));
+        THROW_IF_FAILED(SetStyleFromResourceDictionary(renderContext, L"Adaptive.SelectAction", buttonAsFrameworkElement.Get()));
 
         WireButtonClickToAction(button.Get(), action, renderContext);
 
